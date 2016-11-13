@@ -103,7 +103,7 @@ class LogisticRegression(object):
             name='L',
             borrow=True
         )
-        self.p_y_given_x_lhuc = T.nnet.softmax(T.dot(input, self.W)*2*T.nnet.sigmoid(L) + self.b)
+        self.p_y_given_x_lhuc = T.nnet.softmax(T.dot(input, self.W)*2*T.nnet.sigmoid(self.L) + self.b)
 
         # symbolic description of how to compute prediction as class whose
         # probability is maximal
@@ -186,7 +186,29 @@ class LogisticRegression(object):
     def costLHUC(self,y):
     	return -T.mean(T.log(self.p_y_given_x_lhuc)[T.arange(y.shape[0]),y])
 
+    def errorsLHUC(self, y):
+        """Return a float representing the number of errors in the minibatch
+        over the total number of examples of the minibatch ; zero one
+        loss over the size of the minibatch
 
+        :type y: theano.tensor.TensorType
+        :param y: corresponds to a vector that gives for each example the
+                  correct label
+        """
+
+        # check if y has same dimension of y_pred
+        if y.ndim != self.y_pred.ndim:
+            raise TypeError(
+                'y should have the same shape as self.y_pred',
+                ('y', y.type, 'y_pred', self.y_pred_lhuc.type)
+            )
+        # check if y is of the correct datatype
+        if y.dtype.startswith('int'):
+            # the T.neq operator returns a vector of 0s and 1s, where 1
+            # represents a mistake in prediction
+            return T.mean(T.neq(self.y_pred_lhuc, y))
+        else:
+            raise NotImplementedError()
     def errors(self, y):
         """Return a float representing the number of errors in the minibatch
         over the total number of examples of the minibatch ; zero one
@@ -385,12 +407,12 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
 
     # compiling a Theano function that computes the mistakes that are made by
     # the model on a minibatch
-    g_L = T.grad(cost=classifier.costLHUC(self.y), wrt = classifier.L)
+    g_L = T.grad(cost=classifier.costLHUC(y), wrt = classifier.L)
     updatesLHUC = [(classifier.L, classifier.L - learning_rate * g_L)]
     test_model = theano.function(
         inputs=[index],
         updates = updatesLHUC,
-        outputs=classifier.errors(y),
+        outputs=classifier.errorsLHUC(y),
         givens={
             x: test_set_x[index * batch_size: (index + 1) * batch_size],
             y: test_set_y[index * batch_size: (index + 1) * batch_size]
@@ -528,12 +550,12 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
            os.path.split(__file__)[1] +
            ' ran for %.1fs' % ((end_time - start_time))), file=sys.stderr)
 
-    nEpochs_Lhuc = 20
-    epoch = 0
-    while (epoch < nEpochs_Lhuc):
-    	epoch = epoch + 1
-    		
-    	# pass
+    # epoch = 0
+    # while (epoch < 10):
+    	# epoch = epoch + 1
+    	# for minibatch_index in range(n_test_batches):
+    		# minibatch_avg_cost = test_model(minibatch_index)
+    		# print ('loss %f\n'%minibatch_avg_cost)
 def predict():
     """
     An example of how to load a trained model and use it
