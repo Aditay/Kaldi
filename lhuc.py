@@ -460,6 +460,23 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     ###############
     print('... training the model')
     # early-stopping parameters
+    # batch_size = 500
+
+    n_epochs = 50
+    epoch = 0
+    # n_train_batches = 50000/500 
+    while(epoch < n_epochs):
+    	epoch =epoch + 1
+    	for index in xrange(n_train_batches):
+    		minibatch_avg_cost = train_model(index)
+    		# iter = (epoch - 1) * n_train_batches + minibatch_index
+    		validation_losses = [validate_model(i)
+    							 for i in range(n_valid_batches)]
+    		this_validation_loss = numpy.mean(validation_losses)
+    		print('epoch %i, validation error %f'% epoch, this_validation_loss*100)
+
+
+    '''
     patience = 5000  # look as this many examples regardless
     patience_increase = 2  # wait this much longer when a new best is
                                   # found
@@ -546,6 +563,8 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     )
     print('The code run for %d epochs, with %f epochs/sec' % (
         epoch, 1. * epoch / (end_time - start_time)))
+    '''
+
     print(('The code for file ' +
            os.path.split(__file__)[1] +
            ' ran for %.1fs' % ((end_time - start_time))), file=sys.stderr)
