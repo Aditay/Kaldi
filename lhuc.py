@@ -462,19 +462,48 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     # early-stopping parameters
     # batch_size = 500
 
-    n_epochs = 50
-    epoch = 0
+    # n_epochs = 50
+    # epoch = 0
     # n_train_batches = 50000/500 
-    while(epoch < n_epochs):
-    	epoch =epoch + 1
-    	for index in xrange(n_train_batches):
-    		minibatch_avg_cost = train_model(index)
-    		# iter = (epoch - 1) * n_train_batches + minibatch_index
-    		validation_losses = [validate_model(i)
-    							 for i in range(n_valid_batches)]
-    		this_validation_loss = numpy.mean(validation_losses)
-    		print('epoch %i, validation error %f'% epoch, this_validation_loss*100)
-
+    # # while(epoch < n_epochs):
+    # 	# epoch =epoch + 1
+    # 	for index in xrange(n_train_batches):
+    # 		minibatch_avg_cost = train_model(index)
+    # 		# iter = (epoch - 1) * n_train_batches + minibatch_index
+    # 		validation_losses = [validate_model(i)
+    # 							 for i in range(n_valid_batches)]
+    # 		this_validation_loss = numpy.mean(validation_losses)
+    # 		print('epoch %i, validation error %f'% epoch, this_validation_loss*100)
+    patience = 5000
+    validation_freq = min(n_train_batches, patience // 2)
+    best_validation_loss = numpy.inf
+    test_score = 0
+    start_time = timeit.default_timer()
+    done_looping = False
+    epoch = 0
+    while(epoch < n_epochs) and (not done_looping):
+        epoch = epoch +1
+        for minibatch_index in range(n_train_batches):
+            minibatch_avg_cost = train_model(minibatch_index)
+            iter = (epoch -1)* n_train_batches + minibatch_index
+            if(iter +1)%validation_freq == 0:
+                # validation_losses = [validate_model(i)
+                                    #  for i in range(n_valid_batches)]
+                # this_validation_loss = numpy.mean(validation_losses)
+                validation_losses = numpy.zeros([1,1])
+                for i in range(n_valid_batches):
+                    validate_loss = validate_model(i)
+                    print ('%d' % validate_loss)
+                    # print numpy.shape(validate_loss)
+                    # print numpy.shape(validation_losses)
+                    # print validate_loss
+                    numpy.append(validation_losses, validate_loss)
+                this_validation_losses = numpy.mean(validation_losses)
+                print ('epoch %i, minibatch %i/%i, validation error %f' % (epoch, minibatch_index +1, n_train_batches, this_validation_losses*100))
+        if patience <= iter:
+            done_looping = True
+            break
+    
 
     '''
     patience = 5000  # look as this many examples regardless
@@ -564,11 +593,11 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     print('The code run for %d epochs, with %f epochs/sec' % (
         epoch, 1. * epoch / (end_time - start_time)))
     '''
-
+'''
     print(('The code for file ' +
            os.path.split(__file__)[1] +
            ' ran for %.1fs' % ((end_time - start_time))), file=sys.stderr)
-
+'''
     # epoch = 0
     # while (epoch < 10):
     	# epoch = epoch + 1
