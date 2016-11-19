@@ -45,6 +45,9 @@ import sys
 import timeit
 import six.moves.cPickle as pickle
 import numpy
+import gc
+for i in range(3): gc.collect()
+import matplotlib.pyplot as plt
 # import numpy as np
 
 import theano
@@ -303,9 +306,36 @@ def load_data(dataset):
         except:
             train_set, valid_set, test_set = pickle.load(f)
  	test_setx, test_sety = test_set    
- 	test_setx_noisy = test_setx + 0.2*numpy.random.random_sample(numpy.shape(test_setx))
-
-	test_set = (test_setx_noisy, test_sety) 
+ 	# test_setx_noisy = test_setx + 0.2*numpy.random.random_sample(numpy.shape(test_setx))
+    # test_setx_noisy = test_setx + numpy.random.normal(0.5,0.4)
+    # plt.imshow(numpy.reshape(test_setx[1],[28,28]))
+    # plt.gray()
+    # plt.show()
+    test_setx_noisy = test_setx
+    [r, c] = numpy.shape(test_setx)
+    std = 0.4
+    for i in range(r):
+        for j in range(c):
+            test_setx_noisy[i][j] = test_setx_noisy[i][j] + numpy.random.normal(test_setx[i][j],std)
+    '''
+    [r,c] = numpy.shape(test_setx)
+    prob = 0.1
+    test_setx_noisy = test_setx
+    thresh = 1 - prob
+    for i in range(r):
+        for j in range(c):
+            rnd = numpy.random.random()
+            if rnd < prob:
+                test_setx_noisy[i][j] = 0
+            elif rnd > thresh:
+                test_setx_noisy[i][j] = 1
+    '''
+    '''
+    plt.imshow(numpy.reshape(test_setx_noisy[1],[28,28]))
+    plt.gray()
+    plt.show()
+    '''        
+    test_set = (test_setx_noisy, test_sety) 
     # train_set, valid_set, test_set format: tuple(input, target)
     # input is a numpy.ndarray of 2 dimensions (a matrix)
     # where each row corresponds to an example. target is a
@@ -431,6 +461,10 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     )
 
     # updatesLHUC = [(classifier.L, classifier.L - learning_rate * g_L)]
+    # get_weights = theano.function(
+        # inputs = [0],
+        # outputs= classifier.W
+    # )
     test_model2 = theano.function(
         inputs=[index],
         # updates = updatesLHUC,
@@ -549,16 +583,19 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
         # print ('%i' % (n_test_batches_lhuc))
         ferror = 0
         n3 = 0
-        for mn in range(30):
+        for mn in range(33):
             n3 = n3 + 1
             lhucError2 = test_model3(mn)
             ferror = ferror + lhucError2
-        for minibatch_index_test in range(10):
-           lhucError = test_model(minibatch_index_test)
-                
+        for minibatch_index_test in range(5):
+           lhucError = test_model(minibatch_index_test)        
         this_lhuc_loss = ferror/n3
         print('epoch %i, test error after lhuc %f' % (fepoch, this_lhuc_loss*100))
-
+    W = classifier.W
+    print (W)
+        # W = get_weights(0)
+        # print (W)
+        # print ('weights %f %f %f %f %f %f %f %f ' %(W[0][1], W[3][4], W[4][4],W[350][6], W[28][28], W[63][9], W[84][7], W[8][8]))
     # n = 0
     # lossT = 0
     # for i in range(n_test_batches):
