@@ -418,7 +418,7 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
             y: test_set_y[index * batch_size: (index + 1) * batch_size]
         }
     )
-
+    # '''
     validate_model = theano.function(
         inputs=[index],
         outputs=classifier.errors(y),
@@ -427,7 +427,8 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
             y: valid_set_y[index * batch_size: (index + 1) * batch_size]
         }
     )
-
+    
+    # validate_model = theano.function( inputs= )
     # compute the gradient of cost with respect to theta = (W,b)
     g_W = T.grad(cost=cost, wrt=classifier.W)
     g_b = T.grad(cost=cost, wrt=classifier.b)
@@ -485,26 +486,34 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
         epoch = epoch +1
         for minibatch_index in range(n_train_batches):
             minibatch_avg_cost = train_model(minibatch_index)
+            # print ('%f'% minibatch_avg_cost)
             iter = (epoch -1)* n_train_batches + minibatch_index
+            # validation_loss = validate_model(mini)
+            # '''
             if(iter +1)%validation_freq == 0:
                 # validation_losses = [validate_model(i)
                                     #  for i in range(n_valid_batches)]
                 # this_validation_loss = numpy.mean(validation_losses)
-                validation_losses = numpy.zeros([1,1])
+                # validation_losses = numpy.zeros([1,1])
+                n = 0
+                loss = 0
                 for i in range(n_valid_batches):
-                    validate_loss = validate_model(i)
-                    print ('%d' % validate_loss)
+                    n = n +1
+                    validate_losses = validate_model(i)
+                    loss = loss + validate_losses
+                    # print ('%f' % validate_loss)
                     # print numpy.shape(validate_loss)
                     # print numpy.shape(validation_losses)
                     # print validate_loss
-                    numpy.append(validation_losses, validate_loss)
-                this_validation_losses = numpy.mean(validation_losses)
+                    # numpy.append(validation_losses, validate_loss)
+                    # print ('%f' %validation_losses)
+                this_validation_losses = loss / n
                 print ('epoch %i, minibatch %i/%i, validation error %f' % (epoch, minibatch_index +1, n_train_batches, this_validation_losses*100))
         if patience <= iter:
             done_looping = True
             break
+            # '''
     
-
     '''
     patience = 5000  # look as this many examples regardless
     patience_increase = 2  # wait this much longer when a new best is
