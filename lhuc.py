@@ -384,6 +384,8 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     n_valid_batches = valid_set_x.get_value(borrow=True).shape[0] // batch_size
     n_test_batches = test_set_x.get_value(borrow=True).shape[0] // batch_size
 
+    lhuc_batch_size = 300
+    n_test_batches_lhuc = test_set_x.get_value(borrow=True).shape[0] // lhuc_batch_size
     ######################
     # BUILD ACTUAL MODEL #
     ######################
@@ -413,6 +415,26 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
         inputs=[index],
         updates = updatesLHUC,
         outputs=classifier.errorsLHUC(y),
+        givens={
+            x: test_set_x[index * lhuc_batch_size: (index + 1) * lhuc_batch_size],
+            y: test_set_y[index * lhuc_batch_size: (index + 1) * lhuc_batch_size]
+        }
+    )
+    test_model3 = theano.function(
+        inputs=[index],
+        # updates = updatesLHUC,
+        outputs=classifier.errorsLHUC(y),
+        givens={
+            x: test_set_x[index * lhuc_batch_size: (index + 1) * lhuc_batch_size],
+            y: test_set_y[index * lhuc_batch_size: (index + 1) * lhuc_batch_size]
+        }
+    )
+
+    # updatesLHUC = [(classifier.L, classifier.L - learning_rate * g_L)]
+    test_model2 = theano.function(
+        inputs=[index],
+        # updates = updatesLHUC,
+        outputs=classifier.errors(y),
         givens={
             x: test_set_x[index * batch_size: (index + 1) * batch_size],
             y: test_set_y[index * batch_size: (index + 1) * batch_size]
@@ -507,12 +529,46 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
                     # print validate_loss
                     # numpy.append(validation_losses, validate_loss)
                     # print ('%f' %validation_losses)
+                n2 = 0
+                lossT = 0
+                for i in range(n_test_batches):
+                    n2 = n2 + 1
+                    test_losses = test_model2(i)
+                    lossT = lossT + test_losses
+                    testLoss = lossT/n
                 this_validation_losses = loss / n
-                print ('epoch %i, minibatch %i/%i, validation error %f' % (epoch, minibatch_index +1, n_train_batches, this_validation_losses*100))
+                this_test_losses = lossT / n2
+                print ('epoch %i, minibatch %i/%i, validation error %f, test error %f' % (epoch, minibatch_index +1, n_train_batches, this_validation_losses*100, this_test_losses*100))
         if patience <= iter:
             done_looping = True
             break
+    fepoch = 0
+    n_fepoch = 50
+    while(fepoch < n_fepoch):
+        fepoch = fepoch + 1
+        # print ('%i' % (n_test_batches_lhuc))
+        ferror = 0
+        n3 = 0
+        for mn in range(30):
+            n3 = n3 + 1
+            lhucError2 = test_model3(mn)
+            ferror = ferror + lhucError2
+        for minibatch_index_test in range(10):
+           lhucError = test_model(minibatch_index_test)
+                
+        this_lhuc_loss = ferror/n3
+        print('epoch %i, test error after lhuc %f' % (fepoch, this_lhuc_loss*100))
+
+    # n = 0
+    # lossT = 0
+    # for i in range(n_test_batches):
+        # n = n + 1
+        # test_losses = test_model2(i)
+        # lossT = lossT + test_losses
+    # testLoss = lossT/n
+    # print 
             # '''
+    
     
     '''
     patience = 5000  # look as this many examples regardless
