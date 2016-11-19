@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+# import numpy as
 """
 This tutorial introduces logistic regression using Theano and stochastic
 gradient descent.
@@ -39,11 +39,11 @@ from __future__ import print_function
 
 __docformat__ = 'restructedtext en'
 
-import six.moves.cPickle as pickle
 import gzip
 import os
 import sys
 import timeit
+import six.moves.cPickle as pickle
 import numpy
 # import numpy as np
 
