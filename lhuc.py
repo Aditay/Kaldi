@@ -591,8 +591,12 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
            lhucError = test_model(minibatch_index_test)        
         this_lhuc_loss = ferror/n3
         print('epoch %i, test error after lhuc %f' % (fepoch, this_lhuc_loss*100))
-    W = classifier.W
-    print (W)
+    # W = classifier.W
+    # print (W)
+    # print(classifier.W)
+    # get_weights = theano.function(inputs= [None], outputs=[classifier.W])
+    # W = get_weights()
+    # print (W)
         # W = get_weights(0)
         # print (W)
         # print ('weights %f %f %f %f %f %f %f %f ' %(W[0][1], W[3][4], W[4][4],W[350][6], W[28][28], W[63][9], W[84][7], W[8][8]))
