@@ -206,9 +206,14 @@ class LogisticRegression(object):
         # i.e., the mean log-likelihood across the minibatch.
         return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
         # end-snippet-2
+    
+    
     def costLHUC(self,y):
     	return -T.mean(T.log(self.p_y_given_x_lhuc)[T.arange(y.shape[0]),y])
-
+    def costLinear(self,y):
+        return -T.mean(T.log(self.p_y_given_x_linear)[T.arange(y.shape[0]),y])
+    def costLHUC_Linear(self,y):
+        return -T.mean(T.log(self.p_y_given_x_lhuc_linear)[T.arange(y.shape[0]),y])
     def errorsLHUC(self, y):
         """Return a float representing the number of errors in the minibatch
         over the total number of examples of the minibatch ; zero one
@@ -232,6 +237,54 @@ class LogisticRegression(object):
             return T.mean(T.neq(self.y_pred_lhuc, y))
         else:
             raise NotImplementedError()
+    def errorsLinear(self, y):
+        """Return a float representing the number of errors in the minibatch
+        over the total number of examples of the minibatch ; zero one
+        loss over the size of the minibatch
+
+        :type y: theano.tensor.TensorType
+        :param y: corresponds to a vector that gives for each example the
+                  correct label
+        """
+
+        # check if y has same dimension of y_pred
+        if y.ndim != self.y_pred_linear.ndim:
+            raise TypeError(
+                'y should have the same shape as self.y_pred',
+                ('y', y.type, 'y_pred', self.y_pred_linear.type)
+            )
+        # check if y is of the correct datatype
+        if y.dtype.startswith('int'):
+            # the T.neq operator returns a vector of 0s and 1s, where 1
+            # represents a mistake in prediction
+            return T.mean(T.neq(self.y_pred_linear, y))
+        else:
+            raise NotImplementedError()
+    
+    def errorsLHUC_linear(self, y):
+        """Return a float representing the number of errors in the minibatch
+        over the total number of examples of the minibatch ; zero one
+        loss over the size of the minibatch
+
+        :type y: theano.tensor.TensorType
+        :param y: corresponds to a vector that gives for each example the
+                  correct label
+        """
+
+        # check if y has same dimension of y_pred
+        if y.ndim != self.y_pred_lhuc_linear.ndim:
+            raise TypeError(
+                'y should have the same shape as self.y_pred',
+                ('y', y.type, 'y_pred', self.y_pred_lhuc_linear.type)
+            )
+        # check if y is of the correct datatype
+        if y.dtype.startswith('int'):
+            # the T.neq operator returns a vector of 0s and 1s, where 1
+            # represents a mistake in prediction
+            return T.mean(T.neq(self.y_pred_lhuc_linear, y))
+        else:
+            raise NotImplementedError()
+
     def errors(self, y):
         """Return a float representing the number of errors in the minibatch
         over the total number of examples of the minibatch ; zero one
@@ -436,6 +489,8 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
 
     lhuc_batch_size = 300
     n_test_batches_lhuc = test_set_x.get_value(borrow=True).shape[0] // lhuc_batch_size
+    # linear_batch_size = 300
+    # n_test_batches
     ######################
     # BUILD ACTUAL MODEL #
     ######################
@@ -461,6 +516,19 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     # the model on a minibatch
     g_L = T.grad(cost=classifier.costLHUC(y), wrt = classifier.L)
     updatesLHUC = [(classifier.L, classifier.L - learning_rate * g_L)]
+    g_W_linear = T.grad(cost=classifier.costLinear(y), wrt=classifier.W_linear)
+    g_b_linear = T.grad(cost=classifier.costLinear(y), wrt=classifier.b_linear)
+    g_W_lhuc_linear = T.grad(cost=classifier.costLHUC_Linear(y), wrt = classifier.W_linear)
+    g_b_lhuc_linear = T.grad(cost=classifier.costLHUC_Linear(y), wrt=classifier.b_linear)
+    g_L_lhuc_linear = T.grad(cost=classifier.costLHUC_Linear(y), wrt=classifier.L)
+    updatesLinear = [(classifier.W_linear,classifier.W_linear - learning_rate*g_W_linear),
+                    (classifier.b_linear, classifier.b_linear - learning_rate*g_b_linear)
+                    ]
+    updatesLHUC_Linear = [(classifier.W_linear, classifier.W_linear - learning_rate*g_W_lhuc_linear),
+                        (classifier.b_linear, classifier.b_linear - learning_rate*g_b_lhuc_linear),
+                        (classifier.L, classifier.L - learning_rate*g_L_lhuc_linear)
+
+                        ]                
     test_model = theano.function(
         inputs=[index],
         updates = updatesLHUC,
@@ -489,6 +557,45 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
         inputs=[index],
         # updates = updatesLHUC,
         outputs=classifier.errors(y),
+        givens={
+            x: test_set_x[index * batch_size: (index + 1) * batch_size],
+            y: test_set_y[index * batch_size: (index + 1) * batch_size]
+        }
+    )
+    test_model4 = theano.function(
+        inputs=[index],
+        updates= updatesLinear,
+        outputs=classifier.errorsLinear,
+        givens={
+            x: test_set_x[index * lhuc_batch_size: (index + 1) * lhuc_batch_size],
+            y: test_set_y[index * lhuc_batch_size: (index + 1) * lhuc_batch_size]
+        }
+    )
+
+    test_model5 = theano.function(
+        inputs=[index],
+        # updates = updatesLHUC,
+        outputs=classifier.errorsLinear(y),
+        givens={
+            x: test_set_x[index * batch_size: (index + 1) * batch_size],
+            y: test_set_y[index * batch_size: (index + 1) * batch_size]
+        }
+    )
+
+    test_model6 = theano.function(
+        inputs=[index],
+        updates= updatesLHUC_Linear,
+        outputs=classifier.errorsLHUC_linear(y),
+        givens={
+            x: test_set_x[index * lhuc_batch_size: (index + 1) * lhuc_batch_size],
+            y: test_set_y[index * lhuc_batch_size: (index + 1) * lhuc_batch_size]
+        }
+    )
+
+    test_model7 = theano.function(
+        inputs=[index],
+        # updates = updatesLHUC,
+        outputs=classifier.errorsLHUC_linear(y),
         givens={
             x: test_set_x[index * batch_size: (index + 1) * batch_size],
             y: test_set_y[index * batch_size: (index + 1) * batch_size]
