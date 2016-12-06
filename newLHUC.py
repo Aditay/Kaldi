@@ -123,7 +123,7 @@ class LogisticRegression(object):
             borrow=True
         )
         self.p_y_given_x_lhuc = T.nnet.softmax(T.dot(input, self.W)*2*T.nnet.sigmoid(self.L) + self.b)
-        self.p_y_given_x_lhuc_linear = T.nnet.softmax(T.dot(T.dot(input,self.W_linear)+self.b_linear)*2*T.nnet.sigmoid(self.L)+self.b)
+        self.p_y_given_x_lhuc_linear = T.nnet.softmax(T.dot((T.dot(input,self.W_linear)+self.b_linear),self.W)*2*T.nnet.sigmoid(self.L)+self.b)
         # symbolic description of how to compute prediction as class whose
         # probability is maximal
         self.y_pred_lhuc = T.argmax(self.p_y_given_x_lhuc, axis=1)
@@ -164,7 +164,8 @@ class LogisticRegression(object):
 
         # symbolic description of how to compute prediction as class whose
         # probability is maximal
-        self.p_y_given_x_linear = T.nnet.softmax(T.dot(T.dot(input,self.W_linear)+self.b_linear) + self.b)
+        linearLayer = T.dot(input,self.W_linear) + self.b_linear
+        self.p_y_given_x_linear = T.nnet.softmax(T.dot(linearLayer,self.W) + self.b)
         self.y_pred = T.argmax(self.p_y_given_x, axis=1)
         self.y_pred_linear = T.argmax(self.p_y_given_x_linear)
         # end-snippet-1
@@ -225,7 +226,7 @@ class LogisticRegression(object):
         """
 
         # check if y has same dimension of y_pred
-        if y.ndim != self.y_pred.ndim:
+        if y.ndim != self.y_pred_lhuc.ndim:
             raise TypeError(
                 'y should have the same shape as self.y_pred',
                 ('y', y.type, 'y_pred', self.y_pred_lhuc.type)
@@ -248,12 +249,16 @@ class LogisticRegression(object):
         """
 
         # check if y has same dimension of y_pred
+        # numpy.shape(self.y_pred)
+        # numpy.shape(y)
+        '''
         if y.ndim != self.y_pred_linear.ndim:
             raise TypeError(
                 'y should have the same shape as self.y_pred',
                 ('y', y.type, 'y_pred', self.y_pred_linear.type)
             )
         # check if y is of the correct datatype
+        '''
         if y.dtype.startswith('int'):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
@@ -386,7 +391,7 @@ def load_data(dataset):
     # plt.show()
     test_setx_noisy = test_setx
     [r, c] = numpy.shape(test_setx)
-    std = 0.4
+    std = 0.8
     for i in range(r):
         for j in range(c):
             test_setx_noisy[i][j] = test_setx_noisy[i][j] + numpy.random.normal(test_setx[i][j],std)
@@ -565,7 +570,7 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     test_model4 = theano.function(
         inputs=[index],
         updates= updatesLinear,
-        outputs=classifier.errorsLinear,
+        outputs=classifier.errorsLinear(y),
         givens={
             x: test_set_x[index * lhuc_batch_size: (index + 1) * lhuc_batch_size],
             y: test_set_y[index * lhuc_batch_size: (index + 1) * lhuc_batch_size]
@@ -736,7 +741,37 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
     # testLoss = lossT/n
     # print 
             # '''
-    
+    fepoch = 0
+    n_fepoch = 50
+    while(fepoch < n_fepoch):
+        fepoch = fepoch + 1
+        ferror = 0
+        n3 = 0
+        for mn in range(33):
+            n3 = n3 + 1
+            linearError2 = test_model5(mn)
+            ferror = ferror + linearError2
+        for minibatch_index_test in range(5):
+            linearError = test_model4(minibatch_index_test)
+        this_linear_loss = ferror/n3
+        print('epoch %i, test error after linear layer %f' % (fepoch,this_linear_loss*100))
+    fepoch = 0
+    n_fepoch = 50
+    while(fepoch < n_fepoch):
+        fepoch = fepoch + 1
+        ferror = 0 
+        n3 = 0
+        for mn in range(33):
+            n3 = n3 + 1
+            linear_lhuc_error2 = test_model7(mn)
+            ferror = ferror + linear_lhuc_error2
+        for minibatch_index_test in range(5):
+            linear_lhuc_Error = test_model6(minibatch_index_test)
+        this_lhuc_linear = ferror/n3
+        print('epoch %i, test error after both lhuc and linear %f'% (fepoch,this_lhuc_linear*100))
+
+
+
     
     '''
     patience = 5000  # look as this many examples regardless
