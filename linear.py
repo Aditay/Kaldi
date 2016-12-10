@@ -18,7 +18,7 @@ class Model(object):
     def __init__(self, input, n_in,n_hidden, n_out):
       self.W_linear = theano.shared(
           value=numpy.zeros(
-              (n_in, n_out),
+              (n_in, n_in),
               dtype=theano.config.floatX
           ),
           name= 'W_linear',
@@ -50,7 +50,7 @@ class Model(object):
       )
       self.W = theano.shared(
           value=numpy.zeros(
-              (n_in,n_out),
+              (n_hidden,n_out),
               dtype=theano.config.floatX
           ),
           name='W',
@@ -249,11 +249,11 @@ def sgd_optimization(learning_rate = 0.13, n_epochs = 1000,
     y = T.ivector('y')
 
     classifier = Model(input=x, n_in = 28 * 28,n_hidden= 500, n_out = 10)
-    cost = classifier.negative_log_likelihood
-    g_W = T.grad(cost, wrt = classifier.W)
-    g_b = T.grad(cost, wrt = classifier.b)
-    g_W_h = T.grad(cost, wrt = classifier.W_h)
-    g_b_h = T.grad(cost, wrt= classifier.b_h)
+    cost_model = classifier.negative_log_likelihood(y)
+    g_W = T.grad(cost= cost_model, wrt = classifier.W)
+    g_b = T.grad(cost= cost_model, wrt = classifier.b)
+    g_W_h = T.grad(cost= cost_model, wrt = classifier.W_h)
+    g_b_h = T.grad(cost= cost_model, wrt= classifier.b_h)
 
     updates_model = [(classifier.W, classifier.W - learning_rate*g_W),
                      (classifier.b, classifier.b - learning_rate*g_b),
@@ -262,7 +262,7 @@ def sgd_optimization(learning_rate = 0.13, n_epochs = 1000,
     
     train_model = theano.function(
         inputs=[index],
-        outputs=cost,
+        outputs=cost_model,
         updates = updates_model,
         givens={
             x: train_set_x[index * batch_size: (index + 1) * batch_size],
@@ -279,12 +279,12 @@ def sgd_optimization(learning_rate = 0.13, n_epochs = 1000,
 
     )
     y_predictor = theano.function(
-        inputs=[],
+        inputs=[classifier.input],
         outputs=classifier.y_pred,
-        givens={
-            x: test_set_x,
-            y: test_set_y
-        }
+        # givens={
+            # x: test_set_x[index:],
+            # y: test_set_y[index:]
+        # }
 
     )
     validate_model = theano.function(
@@ -327,13 +327,14 @@ def sgd_optimization(learning_rate = 0.13, n_epochs = 1000,
         if patience <= iter:
             done_looping = True
             break
-    y_predicted = y_predictor([])
+    test_set_x_val = test_set_x.get_value()
+    y_predicted = y_predictor(test_set_x_val[:])
     
     # Training the linear layer
 
-    costLinear = classifier.negative_log_likelihood_linear_net
-    g_W_lin = T.grad(costLinear, wrt= classifier.W_linear)
-    g_b_lin = T.grad(costLinear, wrt= classifier.b_linear)
+    costLinear = classifier.negative_log_likelihood_linear_net(y_predicted)
+    g_W_lin = T.grad(cost=costLinear, wrt= classifier.W_linear)
+    g_b_lin = T.grad(cost=costLinear, wrt= classifier.b_linear)
     updates_model_lin = [(classifier.W_linear, classifier.W_linear - learning_rate* g_W_lin),
                          (classifier.b_linear, classifier.b_linear - learning_rate*g_b_lin)]
     combined_model = theano.function(
