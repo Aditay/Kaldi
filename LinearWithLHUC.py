@@ -214,3 +214,161 @@ print ('the code ran for %d epochs, with %f epochs/sec' % (epoch, 1.*epoch/(end_
                                # img_shape=(28,28), tile_shape=(2, 5), tile_spacing=(1,1))
 # plt.imshow(plot_data, cmap='Greys', interpolation= 'none')
 # plt.axis('off')
+
+# normal noise added
+
+test_set_x_noisy = test_set_x
+[r, c] = numpy.shape(test_set_x)
+std = 0.4
+for i in range(r):
+    for j in range(c):
+        test_set_x_noisy[i][j] = test_set_x_noisy[i][j] + numpy.random.normal(test_set_x[i][j], std)
+
+# salt and pepper noise added
+
+[r, c] = numpy.shape(test_set_x)
+prob = 0.1
+test_set_x_noisy = test_set_x
+thresh = 1 - prob
+for i in range(r):
+    for j in range(c):
+        rnd = numpy.random.random()
+        if rnd < prob:
+            test_set_x_noisy[i][j] = 0
+        elif rnd > thresh:
+            test_set_x_noisy[i][j] = 1
+
+y_predictor = theano.function(inputs=[x],
+                             outputs=[y_pred])
+y_predicted = y_predictor(test_set_x_noisy)
+# print ('')
+test_loss = test_model(test_set_x_noisy, test_set_y)
+print ('test loss after adding noise %f' %(test_loss))
+
+W_linear_value = numpy.asarray(
+    numpy.random.uniform(
+        low=-numpy.sqrt(6./(n_in+n_in)),
+        high=numpy.sqrt(6./(n_in+ n_in)),
+        size=(n_in,n_in)
+    ),
+    dtype=theano.config.floatX
+)
+b_linear_value = numpy.asarray(
+    numpy.random.uniform(
+        low=-numpy.sqrt(6./(n_in+n_in)),
+        high=numpy.sqrt(6./(n_in+n_in)),
+        size=(n_in,)
+    ),
+    dtype=theano.config.floatX
+)
+
+W_linear = theano.shared(value=W_linear_value,
+                         name='W_linear',
+                         borrow=True)
+b_linear = theano.shared(value=b_linear_value,
+                         name='b_linear',
+                         borrow=True)
+hidden_linear = tensor.dot(x, W_linear) + b_linear
+hidden_layer_one_linear = tensor.nnet.relu(tensor.dot(hidden_linear, W_hidden) + b_hidden)
+p_y_given_x_linear = tensor.nnet.softmax(tensor.dot(hidden_layer_one, W) + b)
+y_pred_linear = tensor.argmax(p_y_given_x_linear, axis=1)
+log_prob_linear = tensor.log(p_y_given_x_linear)
+log_likelihood_linear = log_prob_linear[tensor.arange(y.shape[0]), y]
+loss_linear = - log_likelihood_linear.mean()
+
+# Linear layer training starts here
+
+g_W_linear, g_b_linear = tensor.grad(cost=loss_linear, wrt=[W_linear, b_linear])
+new_W_linear = W_linear - learning_rate*g_W_linear
+new_b_linear = b_linear - learning_rate*g_b_linear
+update = [(W_linear, new_W_linear), (b_linear, new_b_linear)]
+
+linear_model = theano.function(inputs=[x, y],
+                               outputs=[loss_linear],
+                               updates=update)
+
+misclass_nb_linear = tensor.neq(y_pred_linear, y)
+misclass_rate_linear = misclass_nb_linear.mean()
+
+linear_model_test = theano.function(inputs=[x, y],
+                                    outputs=misclass_rate_linear)
+
+batch_size = 300
+# n_test_batches = test_set_x.shape[0] // batch_size
+y_predicted = numpy.asarray(y_predicted)
+y_predicted = y_predicted[0]
+# n_epochs_linear = 20
+n_epochs_linear = 20
+epoch = 0
+while epoch < n_epochs_linear:
+    epoch = epoch + 1
+    for minibatch_index in range(5):
+        minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x, y_predicted)
+        minibatch_avg_index = linear_model(minibatch_x, minibatch_y)
+        linear_test_loss = linear_model_test(test_set_x, y_predicted)
+    print ('linear epoch %f, test accuracy %f' % (epoch, linear_test_loss*100))
+
+# LHUC parameters are added here
+
+l_hidden_one_values = numpy.asarray(
+    numpy.random.uniform(
+        low=-numpy.sqrt(6./(n_in+n_hidden)),
+        high=numpy.sqrt(6./(n_in+n_hidden)),
+        size=(n_hidden,)
+    ),
+    dtype=theano.config.floatX
+)
+l_hidden_two_values = numpy.asarray(
+    numpy.random.uniform(
+        low=-numpy.sqrt(6./(n_hidden+n_out)),
+        high=numpy.sqrt(6./(n_hidden+n_out)),
+        size=(n_out,)
+    ),
+    dtype=theano.config.floatX
+)
+
+l_hidden_one = theano.shared(value=l_hidden_one_values,
+                             name='l_hidden1',
+                             borrow=True)
+l_hidden_two = theano.shared(value=l_hidden_two_values,
+                             name='l_hidden2',
+                             borrow=True)
+
+
+hidden_layer_one_lhuc = tensor.nnet.relu(tensor.dot(hidden_linear, W_hidden)*2*tensor.nnet.sigmoid(l_hidden_one) + b_hidden)
+
+p_y_given_x_lhuc = tensor.nnet.softmax(tensor.dot(hidden_layer_one_lhuc, W)*2*tensor.nnet.sigmoid(l_hidden_two) + b)
+y_pred_lhuc = tensor.argmax(p_y_given_x_lhuc)
+log_prob_lhuc = tensor.log(p_y_given_x_lhuc)
+log_likelihood_lhuc = log_prob_linear[tensor.arange(y.shape[0]), y]
+loss_lhuc = - log_likelihood_lhuc.mean()
+
+g_l1, g_l2 = tensor.grad(cost=loss_lhuc, wrt=[l_hidden_one, l_hidden_two])
+new_l1 = l_hidden_one - learning_rate*g_l1
+new_l2 = l_hidden_two - learning_rate*g_l2
+update = [(l_hidden_one, new_l1), (l_hidden_two, new_l2)]
+
+lhuc_model = theano.function(inputs=[x, y],
+                             outputs=[loss_lhuc],
+                             updates=update)
+misclass_nb_lhuc = tensor.neq(y_pred_lhuc, y)
+misclass_rate_lhuc = misclass_nb_lhuc.mean()
+
+lhuc_model_test = theano.function(inputs=[x, y],
+                                  outputs=misclass_rate_lhuc)
+
+
+batch_size = 300
+y_predicted = y_predictor(test_set_x_noisy)
+y_predicted = numpy.asarray(y_predicted)
+y_predicted = y_predicted[0]
+print y_predicted
+n_epochs_lhuc = 50
+epoch = 0
+while epoch < n_epochs_lhuc:
+    epoch = epoch + 1
+    for minibatch_index in range(10):
+        minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x, y_predicted)
+        minibatch_avg_index = lhuc_model(minibatch_x, minibatch_y)
+        lhuc_loss_test = lhuc_model_test(test_set_x, y_predicted)
+    print ('lhuc epoch %d , test accuracy %f' % (epoch, lhuc_loss_test*100))
