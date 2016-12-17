@@ -4,6 +4,8 @@ import os
 import requests
 import gzip
 import six
+import gc
+for i in range(3): gc.collect()
 from six.moves import cPickle
 
 if not os.path.exists('mnist.pkl.gz'):
@@ -369,7 +371,58 @@ epoch = 0
 while epoch < n_epochs_lhuc:
     epoch = epoch + 1
     for minibatch_index in range(10):
-        minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x, y_predicted)
+        minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
         minibatch_avg_index = lhuc_model(minibatch_x, minibatch_y)
-        lhuc_loss_test = lhuc_model_test(test_set_x, y_predicted)
+    lhuc_loss_test = lhuc_model_test(test_set_x_noisy, y_predicted)
     print ('lhuc epoch %d , test accuracy %f' % (epoch, lhuc_loss_test*100))
+
+
+# # LHUC is added here without adding linear layer
+
+l_hidden_without_linear_value = numpy.asarray(
+    numpy.random.uniform(
+        low=-numpy.sqrt(6./(n_in + n_hidden)),
+        high=numpy.sqrt(6./(n_in + n_hidden)),
+        size=(n_hidden,)
+    ),
+    dtype=theano.config.floatX
+)
+
+l_hidden_without_linear = theano.shared(value=l_hidden_without_linear_value,
+                                        name='l_hidden_without_linear',
+                                        borrow=True)
+
+hidden_layer_lhuc_without_lhuc = tensor.nnet.relu(tensor.dot(x, W_hidden) + b_hidden)*2*tensor.nnet.sigmoid(l_hidden_without_linear)
+p_y_given_x_lhuc_without_linear = tensor.nnet.softmax(tensor.dot(hidden_layer_lhuc_without_lhuc, W) + b)
+y_pred_lhuc_without_linear = tensor.argmax(p_y_given_x_lhuc_without_linear)
+log_prob_lhuc_without_linear = tensor.log(p_y_given_x_lhuc_without_linear)
+log_likelihood_lhuc_without_linear = log_prob_lhuc_without_linear[tensor.arange(y.shape[0]), y]
+loss_lhuc_without_linear = - log_likelihood_lhuc_without_linear.mean()
+
+g_l_without_linear = tensor.grad(cost=loss_lhuc_without_linear, wrt=[l_hidden_without_linear])
+new_l1_without_linear = l_hidden_without_linear - learning_rate*g_l_without_linear
+update = [(l_hidden_without_linear, new_l1_without_linear)]
+lhuc_model_without_linear = theano.function(inputs=[x, y],
+                                            outputs=[loss_lhuc_without_linear],
+                                            updates=update)
+misclass_nb_lhuc_without_linear = tensor.neq(y_pred_lhuc_without_linear, y)
+misclass_rate_lhuc_without_linear = misclass_nb_lhuc_without_linear.mean()
+
+lhuc_model_without_linear_test = theano.function(inputs=[x, y],
+                                                 outputs=[misclass_rate_lhuc_without_linear])
+
+batch_size = 300
+y_predicted = y_predictor(test_set_x_noisy)
+y_predicted = numpy.asarray(y_predicted)
+y_predicted = y_predicted[0]
+
+n_epochs_lhuc = 50
+epoch = 0
+while epoch < n_epochs_lhuc:
+    epoch = epoch + 1
+    for minibatch_index in range(10):
+        minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
+        minibatch_avg_index = lhuc_model_without_linear(minibatch_x, minibatch_y)
+    lhuc_loss_test = lhuc_model_without_linear_test(test_set_x_noisy)
+    print ('lhuc epoch without linear epoch %d, test error %f '% (epoch, lhuc_loss_test*100))
+
