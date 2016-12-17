@@ -216,7 +216,7 @@ print ('the code ran for %d epochs, with %f epochs/sec' % (epoch, 1.*epoch/(end_
                                # img_shape=(28,28), tile_shape=(2, 5), tile_spacing=(1,1))
 # plt.imshow(plot_data, cmap='Greys', interpolation= 'none')
 # plt.axis('off')
-
+'''
 # normal noise added
 
 test_set_x_noisy = test_set_x
@@ -225,7 +225,7 @@ std = 0.4
 for i in range(r):
     for j in range(c):
         test_set_x_noisy[i][j] = test_set_x_noisy[i][j] + numpy.random.normal(test_set_x[i][j], std)
-
+'''
 # salt and pepper noise added
 
 [r, c] = numpy.shape(test_set_x)
@@ -239,7 +239,13 @@ for i in range(r):
             test_set_x_noisy[i][j] = 0
         elif rnd > thresh:
             test_set_x_noisy[i][j] = 1
-
+'''
+# Linear Transform on the test dataset
+test_set_x_noisy = test_set_x*2 + 3
+[r,c] = numpy.shape(test_set_x)
+for i in range(r):
+    test_set_x_noisy[i][:] = test_set_x_noisy[i][:]/numpy.amax(test_set_x_noisy[i][:])
+'''
 y_predictor = theano.function(inputs=[x],
                              outputs=[y_pred])
 y_predicted = y_predictor(test_set_x_noisy)
@@ -408,7 +414,7 @@ batch_size = 300
 y_predicted = y_predictor(test_set_x_noisy)
 y_predicted = numpy.asarray(y_predicted)
 y_predicted = y_predicted[0]
-print y_predicted
+# print y_predicted
 n_epochs_lhuc = 20
 epoch = 0
 while epoch < n_epochs_lhuc:
@@ -535,7 +541,7 @@ batch_size = 300
 y_predicted = y_predictor(test_set_x_noisy)
 y_predicted = numpy.asarray(y_predicted)
 y_predicted = y_predicted[0]
-print y_predicted
+# print y_predicted
 n_epochs_lhuc = 20
 epoch = 0
 while epoch < n_epochs_lhuc:
