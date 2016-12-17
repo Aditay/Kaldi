@@ -318,6 +318,7 @@ l_hidden_one_values = numpy.asarray(
     ),
     dtype=theano.config.floatX
 )
+'''
 l_hidden_two_values = numpy.asarray(
     numpy.random.uniform(
         low=-numpy.sqrt(6./(n_hidden+n_out)),
@@ -326,27 +327,27 @@ l_hidden_two_values = numpy.asarray(
     ),
     dtype=theano.config.floatX
 )
-
+'''
 l_hidden_one = theano.shared(value=l_hidden_one_values,
                              name='l_hidden1',
                              borrow=True)
-l_hidden_two = theano.shared(value=l_hidden_two_values,
-                             name='l_hidden2',
-                             borrow=True)
+# l_hidden_two = theano.shared(value=l_hidden_two_values,
+#                              name='l_hidden2',
+#                              borrow=True)
 
 
-hidden_layer_one_lhuc = tensor.nnet.relu(tensor.dot(hidden_linear, W_hidden)*2*tensor.nnet.sigmoid(l_hidden_one) + b_hidden)
+hidden_layer_one_lhuc = tensor.nnet.relu(tensor.dot(hidden_linear, W_hidden) + b_hidden)*2*tensor.nnet.sigmoid(l_hidden_one)
 
-p_y_given_x_lhuc = tensor.nnet.softmax(tensor.dot(hidden_layer_one_lhuc, W)*2*tensor.nnet.sigmoid(l_hidden_two) + b)
+p_y_given_x_lhuc = tensor.nnet.softmax(tensor.dot(hidden_layer_one_lhuc, W) + b)
 y_pred_lhuc = tensor.argmax(p_y_given_x_lhuc)
 log_prob_lhuc = tensor.log(p_y_given_x_lhuc)
-log_likelihood_lhuc = log_prob_linear[tensor.arange(y.shape[0]), y]
+log_likelihood_lhuc = log_prob_lhuc[tensor.arange(y.shape[0]), y]
 loss_lhuc = - log_likelihood_lhuc.mean()
 
-g_l1, g_l2 = tensor.grad(cost=loss_lhuc, wrt=[l_hidden_one, l_hidden_two])
+g_l1 = tensor.grad(cost=loss_lhuc, wrt=[l_hidden_one])
 new_l1 = l_hidden_one - learning_rate*g_l1
-new_l2 = l_hidden_two - learning_rate*g_l2
-update = [(l_hidden_one, new_l1), (l_hidden_two, new_l2)]
+# new_l2 = l_hidden_two - learning_rate*g_l2
+update = [(l_hidden_one, new_l1)]
 
 lhuc_model = theano.function(inputs=[x, y],
                              outputs=[loss_lhuc],
