@@ -129,7 +129,7 @@ def get_minibatch(i, dataset_x, dataset_y):
 
 ## Early stopping parameters
 # maximum number of epochs
-n_epochs = 1000
+n_epochs = 50
 # look at this many examples regardless
 patience = 5000
 # wait this much longer when a new best is found
@@ -272,7 +272,7 @@ b_linear = theano.shared(value=b_linear_value,
                          borrow=True)
 hidden_linear = tensor.dot(x, W_linear) + b_linear
 hidden_layer_one_linear = tensor.nnet.relu(tensor.dot(hidden_linear, W_hidden) + b_hidden)
-p_y_given_x_linear = tensor.nnet.softmax(tensor.dot(hidden_layer_one, W) + b)
+p_y_given_x_linear = tensor.nnet.softmax(tensor.dot(hidden_layer_one_linear, W) + b)
 y_pred_linear = tensor.argmax(p_y_given_x_linear, axis=1)
 log_prob_linear = tensor.log(p_y_given_x_linear)
 log_likelihood_linear = log_prob_linear[tensor.arange(y.shape[0]), y]
@@ -311,7 +311,16 @@ while epoch < n_epochs_linear:
     print ('linear epoch %f, test accuracy %f' % (epoch, linear_test_loss*100))
 
 # LHUC parameters are added here
-
+'''
+l_hidden_one_values = numpy.asarray(
+    numpy.random.uniform(
+        low=-numpy.sqrt(6./(n_in+n_hidden)),
+        high=numpy.sqrt(6./(n_in+n_hidden)),
+        size=(n_hidden,)
+    ),
+    dtype=theano.config.floatX
+)
+'''
 l_hidden_one_values = numpy.asarray(
     numpy.random.uniform(
         low=-numpy.sqrt(6./(n_in+n_hidden)),
@@ -330,6 +339,7 @@ l_hidden_two_values = numpy.asarray(
     dtype=theano.config.floatX
 )
 '''
+'''
 l_hidden_one = theano.shared(value=l_hidden_one_values,
                              name='l_hidden1',
                              borrow=True)
@@ -345,8 +355,40 @@ y_pred_lhuc = tensor.argmax(p_y_given_x_lhuc)
 log_prob_lhuc = tensor.log(p_y_given_x_lhuc)
 log_likelihood_lhuc = log_prob_lhuc[tensor.arange(y.shape[0]), y]
 loss_lhuc = - log_likelihood_lhuc.mean()
+'''
+l_hidden_one = theano.shared(value=l_hidden_one_values,
+                             name='l_hidden1',
+                             borrow=True)
+# l_hidden_two = theano.shared(value=l_hidden_two_values,
+#                              name='l_hidden2',
+#                              borrow=True)
 
+# hidden_linear_lhuc = tensor.dot(x, W_linear) + b_linear
+hidden_layer_one_lhuc = tensor.nnet.relu(tensor.dot(hidden_linear, W_hidden) + b_hidden)*2*tensor.nnet.sigmoid(l_hidden_one)
+
+p_y_given_x_lhuc = tensor.nnet.softmax(tensor.dot(hidden_layer_one_lhuc, W) + b)
+y_pred_lhuc = tensor.argmax(p_y_given_x_lhuc, axis=1)
+log_prob_lhuc = tensor.log(p_y_given_x_lhuc)
+log_likelihood_lhuc = log_prob_lhuc[tensor.arange(y.shape[0]), y]
+loss_lhuc = - log_likelihood_lhuc.mean()
+'''
 g_l1 = tensor.grad(cost=loss_lhuc, wrt=[l_hidden_one])
+new_l1 = l_hidden_one - learning_rate*g_l1
+# new_l2 = l_hidden_two - learning_rate*g_l2
+update = [(l_hidden_one, new_l1)]
+
+lhuc_model = theano.function(inputs=[x, y],
+                             outputs=[loss_lhuc],
+                             updates=update)
+misclass_nb_lhuc = tensor.neq(y_pred_lhuc, y)
+misclass_rate_lhuc = misclass_nb_lhuc.mean()
+
+lhuc_model_test = theano.function(inputs=[x, y],
+                                  outputs=misclass_rate_lhuc)
+
+'''
+
+g_l1 = tensor.grad(cost=loss_lhuc, wrt=l_hidden_one)
 new_l1 = l_hidden_one - learning_rate*g_l1
 # new_l2 = l_hidden_two - learning_rate*g_l2
 update = [(l_hidden_one, new_l1)]
@@ -362,21 +404,39 @@ lhuc_model_test = theano.function(inputs=[x, y],
 
 
 batch_size = 300
+# print y_predicted
 y_predicted = y_predictor(test_set_x_noisy)
 y_predicted = numpy.asarray(y_predicted)
 y_predicted = y_predicted[0]
 print y_predicted
-n_epochs_lhuc = 50
+n_epochs_lhuc = 20
 epoch = 0
 while epoch < n_epochs_lhuc:
     epoch = epoch + 1
     for minibatch_index in range(10):
         minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
         minibatch_avg_index = lhuc_model(minibatch_x, minibatch_y)
-    lhuc_loss_test = lhuc_model_test(test_set_x_noisy, y_predicted)
+        lhuc_loss_test = lhuc_model_test(test_set_x_noisy, y_predicted)
     print ('lhuc epoch %d , test accuracy %f' % (epoch, lhuc_loss_test*100))
 
+'''
+batch_size = 300
+y_predicted = y_predictor(test_set_x_noisy)
+y_predicted = numpy.asarray(y_predicted)
+y_predicted = y_predicted[0]
+print y_predicted
+n_epochs_lhuc = 20
+epoch = 0
+while epoch < n_epochs_lhuc:
+    epoch = epoch + 1
+    for minibatch_index in range(10):
+        minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
+        minibatch_avg_index = lhuc_model(minibatch_x, minibatch_y)
+        lhuc_loss_test = lhuc_model_test(test_set_x_noisy, y_predicted)
+    print ('lhuc epoch %d , test accuracy %f' % (epoch, lhuc_loss_test*100))
 
+'''
+'''
 # # LHUC is added here without adding linear layer
 
 l_hidden_without_linear_value = numpy.asarray(
@@ -410,19 +470,78 @@ misclass_rate_lhuc_without_linear = misclass_nb_lhuc_without_linear.mean()
 
 lhuc_model_without_linear_test = theano.function(inputs=[x, y],
                                                  outputs=[misclass_rate_lhuc_without_linear])
-
 batch_size = 300
 y_predicted = y_predictor(test_set_x_noisy)
 y_predicted = numpy.asarray(y_predicted)
 y_predicted = y_predicted[0]
-
+print y_predicted
 n_epochs_lhuc = 50
 epoch = 0
 while epoch < n_epochs_lhuc:
     epoch = epoch + 1
     for minibatch_index in range(10):
         minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
+        # print minibatch_x.shape
+        # print minibatch_y.shape
+        # print minibatch_y
         minibatch_avg_index = lhuc_model_without_linear(minibatch_x, minibatch_y)
-    lhuc_loss_test = lhuc_model_without_linear_test(test_set_x_noisy)
+    lhuc_loss_test = lhuc_model_without_linear_test(test_set_x_noisy, y_predicted)
     print ('lhuc epoch without linear epoch %d, test error %f '% (epoch, lhuc_loss_test*100))
+'''
 
+# LHUC only parameters are added here
+
+l_hidden_one_values_wl = numpy.asarray(
+    numpy.random.uniform(
+        low=-numpy.sqrt(6./(n_in+n_hidden)),
+        high=numpy.sqrt(6./(n_in+n_hidden)),
+        size=(n_hidden,)
+    ),
+    dtype=theano.config.floatX
+)
+
+l_hidden_one_wl = theano.shared(value=l_hidden_one_values_wl,
+                             name='l_hidden1_wl',
+                             borrow=True)
+# l_hidden_two = theano.shared(value=l_hidden_two_values,
+#                              name='l_hidden2',
+#                              borrow=True)
+
+# hidden_linear_lhuc = tensor.dot(x, W_linear) + b_linear
+hidden_layer_one_lhuc_wl = tensor.nnet.relu(tensor.dot(x, W_hidden) + b_hidden)*2*tensor.nnet.sigmoid(l_hidden_one_wl)
+
+p_y_given_x_lhuc_wl = tensor.nnet.softmax(tensor.dot(hidden_layer_one_lhuc_wl, W) + b)
+y_pred_lhuc_wl = tensor.argmax(p_y_given_x_lhuc_wl, axis=1)
+log_prob_lhuc_wl = tensor.log(p_y_given_x_lhuc_wl)
+log_likelihood_lhuc_wl = log_prob_lhuc_wl[tensor.arange(y.shape[0]), y]
+loss_lhuc_wl = - log_likelihood_lhuc_wl.mean()
+
+g_l1_wl = tensor.grad(cost=loss_lhuc_wl, wrt=l_hidden_one_wl)
+new_l1_wl = l_hidden_one_wl - learning_rate*g_l1_wl
+# new_l2 = l_hidden_two - learning_rate*g_l2
+update = [(l_hidden_one_wl, new_l1_wl)]
+
+lhuc_model_wl = theano.function(inputs=[x, y],
+                             outputs=[loss_lhuc_wl],
+                             updates=update)
+misclass_nb_lhuc_wl = tensor.neq(y_pred_lhuc_wl, y)
+misclass_rate_lhuc_wl = misclass_nb_lhuc_wl.mean()
+
+lhuc_model_test_wl = theano.function(inputs=[x, y],
+                                  outputs=misclass_rate_lhuc_wl)
+
+batch_size = 300
+# print y_predicted
+y_predicted = y_predictor(test_set_x_noisy)
+y_predicted = numpy.asarray(y_predicted)
+y_predicted = y_predicted[0]
+print y_predicted
+n_epochs_lhuc = 20
+epoch = 0
+while epoch < n_epochs_lhuc:
+    epoch = epoch + 1
+    for minibatch_index in range(10):
+        minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
+        minibatch_avg_index = lhuc_model_wl(minibatch_x, minibatch_y)
+        lhuc_loss_test = lhuc_model_test_wl(test_set_x_noisy, y_predicted)
+    print ('lhuc without linear epoch %d , test accuracy %f' % (epoch, lhuc_loss_test*100))
