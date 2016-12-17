@@ -307,7 +307,7 @@ while epoch < n_epochs_linear:
     for minibatch_index in range(5):
         minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x, y_predicted)
         minibatch_avg_index = linear_model(minibatch_x, minibatch_y)
-        linear_test_loss = linear_model_test(test_set_x, y_predicted)
+    linear_test_loss = linear_model_test(test_set_x, test_set_y)
     print ('linear epoch %f, test accuracy %f' % (epoch, linear_test_loss*100))
 
 # LHUC parameters are added here
@@ -416,7 +416,7 @@ while epoch < n_epochs_lhuc:
     for minibatch_index in range(10):
         minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
         minibatch_avg_index = lhuc_model(minibatch_x, minibatch_y)
-        lhuc_loss_test = lhuc_model_test(test_set_x_noisy, y_predicted)
+    lhuc_loss_test = lhuc_model_test(test_set_x_noisy, test_set_y)
     print ('lhuc epoch %d , test accuracy %f' % (epoch, lhuc_loss_test*100))
 
 '''
@@ -543,5 +543,5 @@ while epoch < n_epochs_lhuc:
     for minibatch_index in range(10):
         minibatch_x, minibatch_y = get_minibatch(minibatch_index, test_set_x_noisy, y_predicted)
         minibatch_avg_index = lhuc_model_wl(minibatch_x, minibatch_y)
-        lhuc_loss_test = lhuc_model_test_wl(test_set_x_noisy, y_predicted)
+    lhuc_loss_test = lhuc_model_test_wl(test_set_x_noisy, test_set_y)
     print ('lhuc without linear epoch %d , test accuracy %f' % (epoch, lhuc_loss_test*100))
